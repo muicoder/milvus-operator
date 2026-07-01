@@ -1,0 +1,47 @@
+services:
+  etcd:
+    container_name: milvus-etcd
+    entrypoint: etcd --data-dir=/data
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    image: quay.io/coreos/etcd:v3.5.33
+    network_mode: host
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/milvus-standalone/etcd:/data
+  minio:
+    container_name: milvus-minio
+    entrypoint: minio server /data --console-address=:9001
+    environment:
+      MINIO_ROOT_PASSWORD: P@88w0rd
+      MINIO_ROOT_USER: admin
+    healthcheck:
+      test: mc ready local || exit 1
+    image: docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    network_mode: host
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/milvus-standalone/minio:/data
+  standalone:
+    container_name: milvus-standalone
+    depends_on:
+      - etcd
+      - minio
+    entrypoint:
+      - milvus
+      - run
+      - standalone
+    environment: # https://milvus.io/docs/v2.6.x/configure_common.md
+      COMMON_SECURITY_AUTHORIZATIONENABLED: true
+      COMMON_SECURITY_DEFAULTROOTPASSWORD: Miluvs
+      MINIO_ACCESS_KEY_ID: admin
+      MINIO_BUCKET_NAME: standalone
+      MINIO_SECRET_ACCESS_KEY: P@88w0rd
+    healthcheck:
+      test: curl -f http://localhost:9091/healthz || exit 1
+    image: docker.io/milvusdb/milvus:v2.6.22
+    network_mode: host
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/milvus-standalone/milvus:/var/lib/milvus

@@ -1,0 +1,27 @@
+diff --git a/docker-compose.yaml b/docker-compose.yaml
+index 11361854..36185445 100644
+--- a/docker-compose.yaml
++++ b/docker-compose.yaml
+@@ -27,6 +27,13 @@ services:
+     depends_on:
+       - etcd
+       - minio
++    deploy:
++      resources:
++        reservations:
++          devices:
++            - capabilities: ["gpu"]
++              device_ids: ["0"]
++              driver: nvidia
+     entrypoint:
+       - milvus
+       - run
+@@ -39,7 +46,7 @@ services:
+       MINIO_SECRET_ACCESS_KEY: P@88w0rd
+     healthcheck:
+       test: curl -f http://localhost:9091/healthz || exit 1
+-    image: docker.io/milvusdb/milvus:v2.6.22
++    image: docker.io/milvusdb/milvus:v2.6.22-gpu
+     network_mode: host
+     security_opt:
+       - seccomp:unconfined

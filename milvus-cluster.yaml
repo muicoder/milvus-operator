@@ -1,0 +1,108 @@
+---
+apiVersion: operator.etcd.io/v1alpha1
+kind: EtcdCluster
+metadata:
+  name: internal-etcd
+  namespace: milvus-operator
+spec:
+  etcdOptions:
+    - --auto-compaction-mode=revision
+    - --auto-compaction-retention=1000
+    - --quota-backend-bytes=4294967296
+  size: 3
+  storageSpec:
+    accessModes: ReadWriteOnce
+    storageClassName: ~ # local-path
+    volumeSizeRequest: 30Gi
+  version: v3.5.33 # 3.6.14/3.5.33/3.4.45
+---
+apiVersion: milvus.io/v1beta1
+kind: Milvus
+metadata:
+  name: internal
+  namespace: milvus-operator
+spec: # https://github.com/zilliztech/milvus-operator/blob/main/docs/CRD/milvus.md
+  components:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: milvus
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+    dataNode:
+      replicas: 2
+    env:
+      - name: TZ
+        value: Asia/ShangHai
+      - name: GOMAXPROCS
+        value: "8"
+    image: milvusdb/milvus:v2.6.22
+    mixCoord:
+      replicas: 2
+    nodeSelector:
+      milvus: ""
+    proxy:
+      env:
+        - name: TZ
+          value: Asia/ShangHai
+        - name: GOMAXPROCS
+          value: "4"
+      nodeSelector:
+        kubernetes.io/os: linux
+      replicas: 3
+      resources:
+        limits:
+          cpu: "4"
+        requests:
+          cpu: "2"
+    queryNode:
+      replicas: 4
+    resources:
+      limits:
+        cpu: "8"
+      requests:
+        cpu: "4"
+    streamingNode:
+      replicas: 4
+    targetPortType: integer
+  config:
+    common:
+      entityExpiration: 60
+    dataCoord:
+      gc:
+        dropTolerance: 10800
+        interval: 3600
+        missingTolerance: 86400
+    minio:
+      bucketName: milvus-internal-cluster
+      useSSL: true
+      useVirtualHost: false
+  dependencies:
+    etcd:
+      endpoints:
+        - internal-etcd-0.internal-etcd:2379
+        - internal-etcd-1.internal-etcd:2379
+        - internal-etcd-2.internal-etcd:2379
+      external: true
+      inCluster:
+        values:
+          image:
+            tag: 3.5.30-r1
+    # pulsar kafka woodpecker rocksmq natsmq
+    msgStreamType: woodpecker
+    storage:
+      endpoint: play.min.io:443
+      external: true
+      inCluster:
+        values:
+          image:
+            tag: RELEASE.2025-04-22T22-12-26Z
+      # kubectl -n milvus-operator create secret generic secret-milvus-storage --from-literal accesskey=minioadmin --from-literal secretkey=minioadmin
+      secretRef: secret-milvus-storage
+      type: MinIO # Azure MinIO S3
+    tei:
+      enabled: false
+  mode: cluster

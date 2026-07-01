@@ -1,0 +1,22 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: milvus-operator
+  namespace: kube-system
+spec:
+  chart: milvus-operator
+  createNamespace: true
+  failurePolicy: retry
+  insecureSkipTLSVerify: true
+  repo: https://zilliztech.github.io/milvus-operator
+  targetNamespace: milvus-operator
+  valuesContent: |-
+    cert-manager:
+      enabled: false
+    enableWebhook: false
+    installCRDs: true
+    monitoringEnabled: false
+    nodeSelector:
+      operator: ""
+    replicaCount: 1
+  version: 1.3.8

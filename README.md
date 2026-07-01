@@ -143,3 +143,10 @@ Or use kubectl & raw manifests:
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/zilliztech/milvus-operator/v1.3.8/deploy/manifests/deployment.yaml
 ```
+
+Or use Compose:
+
+```shell
+docker-compose up -d
+docker-compose ps
+```
